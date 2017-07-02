@@ -1,6 +1,21 @@
 # RouterOS-Backup-Tools
 Tools to decrypt/encrypt RouterOS v6.13+ backup files
 
+# Usage examples  
+
+### Info
+`./ROSbackup.py info -i MikroTik.backup`  
+
+### Decrypt  
+Convert an encrypted backup to a plaintext backup  
+`./ROSbackup.py decrypt -i MikroTik-encrypted.backup -o MikroTik-plaintext.backup -p password`  
+
+
+### Encrypt  
+Convert a plaintext backup to an encrypted backup  
+`./ROSbackup.py encrypt -i MikroTik-plaintext.backup -o MikroTik-encrypted.backup -p password`  
+
+
 # Header structure
 ## Plaintext version
 | Size (byte)  | Type | Name | Comment |
