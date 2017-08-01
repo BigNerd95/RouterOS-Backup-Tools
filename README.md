@@ -18,13 +18,13 @@ Convert a plaintext backup to an encrypted backup
 
 # Header structure
 ## Plaintext version
-| Size (byte)  | Type | Name | Comment |
+| Size (byte)  | Type | Name | Description |
 | :----------: | ---- | ---- | ------- |
 | 4 | Unsigned LE Int | Magic | 0xB1A1AC88 |
 | 4 | Unsigned LE Int | File size | length in bytes |
 
 ## Encrypted version
-| Size (byte)  | Type | Name | Comment |
+| Size (byte)  | Type | Name | Description |
 | :----------: | ---- | ---- | ------- |
 | 4 | Unsigned LE Int | Magic | 0x7291A8EF |
 | 4 | Unsigned LE Int | File size | length in bytes |
@@ -35,7 +35,7 @@ Convert a plaintext backup to an encrypted backup
 In the body are saved all file pair with extension .idx and .dat inside /flash/rw/store/  
 For each file:  
 
-| Size (byte)  | Type | Name | Comment |
+| Size (byte)  | Type | Name | Description |
 | :----------: | ---- | ---- | ------- |
 | 4 | Unsigned LE Int | Filename length | Filename length without extension (.idx .dat) |
 | Filename length | String | Filename | String without null byte terminator (and without extension .idx .dat)|
@@ -51,3 +51,7 @@ For each file:
 4) RC4 cipher is initialized with SHA1 digest
 5) RC4 cipher skip first 0x300 (256 * 3 = 768) iteration
 6) 0xB1A1AC88 is encrypted to check if password is correct before performing a decryption
+
+# Dependences
+- argparse
+- pycrypto

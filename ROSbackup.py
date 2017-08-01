@@ -47,7 +47,7 @@ def gen_salt(size):
 def setup_cipher(salt, password):
     key = SHA.new(salt + bytes(password, 'ascii')).digest()
     cipher = ARC4.new(key)
-    cipher.encrypt(b'\x00' * RC4_SKIP) # skip stream start
+    cipher.encrypt(bytes(RC4_SKIP)) # skip stream start
     return cipher
 
 ##################
@@ -58,7 +58,7 @@ def decrypt_backup(input_file, output_file, cipher):
     input_file.seek(44, 0) # skip magic, length, salt, magic_check
     output_file.seek(0, 0)
     magic = pack('<I', MAGIC_PLAINTEXT)
-    output_file.write(magic + b'\x00' * 4) # magic, length offset
+    output_file.write(magic + bytes(4)) # magic, length offset
 
     while True:
         chunk = input_file.read(1024)
@@ -74,7 +74,7 @@ def encrypt_backup(input_file, output_file, cipher, salt):
     input_file.seek(8, 0) # skip magic, length
     output_file.seek(0, 0)
     magic = pack('<I', MAGIC_ENCRYPTED)
-    output_file.write(magic + b'\x00' * 4 + salt) # magic, length offset, salt
+    output_file.write(magic + bytes(4) + salt) # magic, length offset, salt
 
     magic_check = pack('<I', MAGIC_PLAINTEXT)
     output_file.write(cipher.encrypt(magic_check))
