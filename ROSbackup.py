@@ -2,10 +2,9 @@
 
 # RouterOS Backup Tools by BigNerd95
 
-import sys
+import sys, os, struct
 from random import randrange
 from argparse import ArgumentParser, FileType
-from struct import pack, unpack
 from Crypto.Cipher import ARC4
 from Crypto.Hash import SHA
 
@@ -21,27 +20,27 @@ RC4_SKIP = 0x300
 def get_header(input_file):
     input_file.seek(0, 0)
     data = input_file.read(8)
-    header = unpack('<II', data)
+    header = struct.unpack('<II', data)
     return header[0], header[1]
 
 def get_salt(input_file):
     input_file.seek(8, 0)
     data = input_file.read(32)
-    salt = unpack('<32s', data)
+    salt = struct.unpack('<32s', data)
     return salt[0]
 
 def get_magic_check(input_file):
     input_file.seek(40, 0)
     data = input_file.read(4)
-    magic_check = unpack('<4s', data)
+    magic_check = struct.unpack('<4s', data)
     return magic_check[0]
 
 def check_password(cipher, magic_check):
     data = cipher.decrypt(magic_check)
-    decrypted_magic_check = unpack('<I', data)
+    decrypted_magic_check = struct.unpack('<I', data)
     return decrypted_magic_check[0] == MAGIC_PLAINTEXT
 
-def gen_salt(size):
+def make_salt(size):
     return bytes([randrange(256) for _ in range(size)])
 
 def setup_cipher(salt, password):
@@ -50,6 +49,22 @@ def setup_cipher(salt, password):
     cipher.encrypt(bytes(RC4_SKIP)) # skip stream start
     return cipher
 
+def extract_data(input_file):
+    raw_len = input_file.read(4)
+    if len(raw_len) != 4:
+        raise EOFError('EOF')
+    data_len = struct.unpack('<I', raw_len)[0]
+
+    raw_data = input_file.read(data_len)
+    if len(raw_data) != data_len:
+        raise EOFError('EOF')
+    return raw_data
+
+def create_write_file(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
+        f.write(data)
+
 ##################
 # core functions #
 ##################
@@ -57,7 +72,7 @@ def setup_cipher(salt, password):
 def decrypt_backup(input_file, output_file, cipher):
     input_file.seek(44, 0) # skip magic, length, salt, magic_check
     output_file.seek(0, 0)
-    magic = pack('<I', MAGIC_PLAINTEXT)
+    magic = struct.pack('<I', MAGIC_PLAINTEXT)
     output_file.write(magic + bytes(4)) # magic, length offset
 
     while True:
@@ -66,17 +81,17 @@ def decrypt_backup(input_file, output_file, cipher):
             break
         output_file.write(cipher.decrypt(chunk))
 
-    length = pack('<I', output_file.tell()) # length
+    length = struct.pack('<I', output_file.tell()) # length
     output_file.seek(4, 0)
     output_file.write(length)
 
 def encrypt_backup(input_file, output_file, cipher, salt):
     input_file.seek(8, 0) # skip magic, length
     output_file.seek(0, 0)
-    magic = pack('<I', MAGIC_ENCRYPTED)
+    magic = struct.pack('<I', MAGIC_ENCRYPTED)
     output_file.write(magic + bytes(4) + salt) # magic, length offset, salt
 
-    magic_check = pack('<I', MAGIC_PLAINTEXT)
+    magic_check = struct.pack('<I', MAGIC_PLAINTEXT)
     output_file.write(cipher.encrypt(magic_check))
 
     while True:
@@ -85,9 +100,32 @@ def encrypt_backup(input_file, output_file, cipher, salt):
             break
         output_file.write(cipher.encrypt(chunk))
 
-    length = pack('<I', output_file.tell()) # length
+    length = struct.pack('<I', output_file.tell()) # length
     output_file.seek(4, 0)
     output_file.write(length)
+
+def unpack_files(input_file, path):
+    count = 0
+    input_file.seek(8, 0) # skip magic, length
+
+    path = os.path.join(path, '')
+    if os.path.exists(path):
+        print("Directory", os.path.basename(path) , "already exists, cannot extract!")
+        return count
+
+    while True:
+        try:
+            name = extract_data(input_file).decode('ascii')
+            idx = extract_data(input_file)
+            dat = extract_data(input_file)
+
+            create_write_file(path + name + '.idx', idx)
+            create_write_file(path + name + '.dat', dat)
+
+            count += 1
+        except EOFError:
+            break
+    return count
 
 ##################
 # main functions #
@@ -156,7 +194,7 @@ def encrypt(input_file, output_file, password):
         elif magic == MAGIC_PLAINTEXT:
             print("RouterOS Plaintext Backup")
             print("Length:", length, "bytes")
-            salt = gen_salt(32)
+            salt = make_salt(32)
             print("Generated Salt (hex):", salt.hex())
 
             cipher = setup_cipher(salt, password)
@@ -171,6 +209,30 @@ def encrypt(input_file, output_file, password):
 
         input_file.close()
         output_file.close()
+
+def unpack(input_file, unpack_directory):
+        print('** Unpack Backup **')
+        magic, length = get_header(input_file)
+
+        if magic == MAGIC_ENCRYPTED:
+            print("RouterOS Encrypted Backup")
+            print("Cannot unpack encrypted backup!")
+            print("Decrypt backup first!")
+
+        elif magic == MAGIC_PLAINTEXT:
+            print("RouterOS Plaintext Backup")
+            print("Length:", length, "bytes")
+
+            print("Extracting backup...")
+            files_num = unpack_files(input_file, unpack_directory)
+            if files_num > 0:
+                print("Wrote", files_num, "files in:", unpack_directory)
+
+        else:
+            print("Invalid file!")
+            print("Cannot unpack!")
+
+        input_file.close()
 
 def parse_cli():
     parser = ArgumentParser(description='** RouterOS Backup Tools by BigNerd95 **')
@@ -189,6 +251,10 @@ def parse_cli():
     encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
     encryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
+    unpackParser = subparser.add_parser('unpack', help='Unpack backup')
+    unpackParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
+    unpackParser.add_argument('-d', '--directory', required=True, metavar='UNPACK_DIRECTORY')
+
     if len(sys.argv) < 2:
         parser.print_help()
 
@@ -202,6 +268,8 @@ def main():
         decrypt(args.input, args.output, args.password)
     elif args.subparser_name == 'encrypt':
         encrypt(args.input, args.output, args.password)
+    elif args.subparser_name == 'unpack':
+        unpack(args.input, args.directory)
 
 if __name__ == '__main__':
     main()
