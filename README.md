@@ -1,5 +1,5 @@
 # RouterOS-Backup-Tools
-Tools to decrypt, encrypt and unpack RouterOS v6.13+ backup files
+Tools to encrypt/decrypt and pack/unpack RouterOS v6.13+ backup files
 
 # Usage examples  
 
