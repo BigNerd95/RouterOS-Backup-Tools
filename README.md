@@ -20,6 +20,9 @@ Convert a plaintext backup to an encrypted backup
 Extract all IDX and DAT files from a plaintext backup in a given directory    
 `./ROSbackup.py unpack -i MikroTik-plaintext.backup -d unpacked_backup`  
 
+### Pack  
+Pack all IDX and DAT files from a given directory in a plaintext backup    
+`./ROSbackup.py pack -d unpacked_backup -o MikroTik-plaintext.backup` 
 
 # Header structure
 ## Plaintext version
