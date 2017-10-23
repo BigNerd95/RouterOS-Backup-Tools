@@ -65,6 +65,29 @@ def create_write_file(path, data):
     with open(path, "wb") as f:
         f.write(data)
 
+def get_file_list(path):
+    file_list = []
+
+    original_path = os.getcwd()
+    os.chdir(path)
+    for root, dirs, files in os.walk("."):
+        file_path = root.split(os.sep)[1:]
+        file_path = '/'.join(file_path)
+        if file_path:
+            file_path += '/'
+        for file in files:
+            # check if both idx and dat files exist
+            if file.endswith(".idx") and file[:-3] + "dat" in files:
+                file_list.append(file_path + file[:-4])
+    os.chdir(original_path)
+
+    return file_list
+
+def write_data(output_file, data):
+    data_len = struct.pack('<I', len(data))
+    output_file.write(data_len)
+    output_file.write(data)
+
 ##################
 # core functions #
 ##################
@@ -104,7 +127,7 @@ def encrypt_backup(input_file, output_file, cipher, salt):
     output_file.seek(4, 0)
     output_file.write(length)
 
-def unpack_files(input_file, path):
+def unpack_files(input_file, file_length, path):
     count = 0
     input_file.seek(8, 0) # skip magic, length
 
@@ -113,7 +136,7 @@ def unpack_files(input_file, path):
         print("Directory", os.path.basename(path) , "already exists, cannot extract!")
         return count
 
-    while True:
+    while input_file.tell() < file_length:
         try:
             name = extract_data(input_file).decode('ascii')
             idx = extract_data(input_file)
@@ -124,8 +147,29 @@ def unpack_files(input_file, path):
 
             count += 1
         except EOFError:
+            print("Unexpected End of File!")
             break
     return count
+
+def pack_files(path, file_names, output_file):
+    output_file.seek(0, 0)
+    magic = struct.pack('<I', MAGIC_PLAINTEXT)
+    output_file.write(magic + bytes(4)) # magic, length offset
+
+    path = os.path.join(path, '')
+    for name in file_names:
+        with open(path + name + '.idx', "rb") as idx_file:
+            idx = idx_file.read()
+        with open(path + name + '.dat', "rb") as dat_file:
+            dat = dat_file.read()
+
+        write_data(output_file, name.encode('ascii'))
+        write_data(output_file, idx)
+        write_data(output_file, dat)
+
+    length = struct.pack('<I', output_file.tell()) # length
+    output_file.seek(4, 0)
+    output_file.write(length)
 
 ##################
 # main functions #
@@ -224,15 +268,28 @@ def unpack(input_file, unpack_directory):
             print("Length:", length, "bytes")
 
             print("Extracting backup...")
-            files_num = unpack_files(input_file, unpack_directory)
+            files_num = unpack_files(input_file, length, unpack_directory)
             if files_num > 0:
-                print("Wrote", files_num, "files in:", unpack_directory)
+                print("Wrote", files_num, "files pair in:", unpack_directory)
 
         else:
             print("Invalid file!")
             print("Cannot unpack!")
 
         input_file.close()
+
+def pack(output_file, pack_directory):
+        print('** Pack Backup **')
+
+        file_names = get_file_list(pack_directory)
+        if len(file_names) > 0:
+            print("Creating plaintext backup with", len(file_names), "files pair...")
+            pack_files(pack_directory, file_names, output_file)
+            print("Done!")
+        else:
+            print("Error! No IDX and DAT files found!")
+
+        output_file.close()
 
 def parse_cli():
     parser = ArgumentParser(description='** RouterOS Backup Tools by BigNerd95 **')
@@ -255,6 +312,10 @@ def parse_cli():
     unpackParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     unpackParser.add_argument('-d', '--directory', required=True, metavar='UNPACK_DIRECTORY')
 
+    packParser = subparser.add_parser('pack', help='Unpack backup')
+    packParser.add_argument('-d', '--directory', required=True, metavar='PACK_DIRECTORY')
+    packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+
     if len(sys.argv) < 2:
         parser.print_help()
 
@@ -270,6 +331,8 @@ def main():
         encrypt(args.input, args.output, args.password)
     elif args.subparser_name == 'unpack':
         unpack(args.input, args.directory)
+    elif args.subparser_name == 'pack':
+        pack(args.output, args.directory)
 
 if __name__ == '__main__':
     main()
