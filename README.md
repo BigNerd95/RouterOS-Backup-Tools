@@ -53,11 +53,11 @@ For each file:
 | DAT File size | Byte array | DAT File | content of DAT file |
 
 # Encryption setup
-1) A random salt of 32 byte is generated
+1) A random salt of 32 byte is generated (RouterOS only populates the first 16 bytes, mistake?)
 2) The password is appended to the salt
-3) salt+password are hashed with SHA1 algorithm
-4) RC4 cipher is initialized with SHA1 digest
-5) RC4 cipher skip first 0x300 (256 * 3 = 768) iteration
+3) salt+password result is hashed with SHA1 algorithm
+4) RC4 cipher is initialized with the SHA1 hash
+5) RC4 cipher skip first 0x300 (256 * 3 = 768) iterations
 6) 0xB1A1AC88 is encrypted to check if password is correct before performing a decryption
 
 # Dependences
