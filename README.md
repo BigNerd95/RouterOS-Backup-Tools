@@ -60,6 +60,10 @@ For each file:
 5) RC4 cipher skip first 0x300 (256 * 3 = 768) iterations
 6) 0xB1A1AC88 is encrypted to check if password is correct before performing a decryption
 
+# Comments
+- RouterOS only populate the first 16 bytes of the salt with random values, the latest 16 bytes are set to 0 (a simple mistake?)
+- When you delete some config (in Webfig or Winbox), they are not really deleted, they are only disabled and hidden, so if you unpack your backup, you can still recover them
+
 # Dependences
 - argparse
 - pycrypto
