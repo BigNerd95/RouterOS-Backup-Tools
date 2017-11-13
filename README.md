@@ -58,11 +58,9 @@ For each entry:
 
 | Size (byte)  | Type | Name | Description |
 | :----------: | ---- | ---- | ------- |
-| 4 | Signed Int | Entry index | The position of this entry in the list |
-| 4 | Signed Int | Entry size | The size of this entry in bytes |
-| 4 | Signed Int | Unused | It is always 5 |
-
-If the entry index is -1, it means the entry was deleted, so it won't be shown on Webfig/Winbox.
+| 4 | Signed Int | Entry Index | The position of this entry in the Webfig/Winbox list, if -1 it means the entry was deleted and it won't be shown on Webfig/Winbox. |
+| 4 | Signed Int | Entry Size | The size of this entry in bytes |
+| 4 | Signed Int | Unused | It's always 5 and sometimes -1 or 6 |
 
 # Encryption setup
 1) A random salt of 32 byte is generated (RouterOS only populates the first 16 bytes, mistake?)
