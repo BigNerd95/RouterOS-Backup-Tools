@@ -52,6 +52,18 @@ For each file:
 | 4 | Unsigned LE Int | DAT File size | length in bytes |
 | DAT File size | Byte array | DAT File | content of DAT file |
 
+# IDX file structure
+The index file contains infos about each entry of DAT file.    
+For each entry:  
+
+| Size (byte)  | Type | Name | Description |
+| :----------: | ---- | ---- | ------- |
+| 4 | Signed Int | Entry index | The position of this entry in the list |
+| 4 | Signed Int | Entry size | The size of this entry in bytes |
+| 4 | Signed Int | Unused | It is always 5 |
+
+If the entry index is -1, it means the entry was deleted, so it won't be shown on Webfig/Winbox.
+
 # Encryption setup
 1) A random salt of 32 byte is generated (RouterOS only populates the first 16 bytes, mistake?)
 2) The password is appended to the salt
