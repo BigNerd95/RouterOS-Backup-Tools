@@ -227,37 +227,6 @@ def decrypt(input_file, output_file, password):
         input_file.close()
         output_file.close()
 
-def recover(input_file, wordlist):
-        print('** Recover Backup Password **')
-        magic, length = get_header(input_file)
-
-        if magic == MAGIC_ENCRYPTED:
-            print("RouterOS Encrypted Backup")
-            print("Length:", length, "bytes")
-            salt = get_salt(input_file)
-            print("Salt (hex):", salt.hex())
-
-            wordlist_file = open(wordlist)
-            for line in wordlist_file:
-                password = line.strip()
-                cipher = setup_cipher(salt, password)
-
-                magic_check = get_magic_check(input_file)
-                if check_password(cipher, magic_check):
-                    print("Correct password: ", password)
-                    break
-
-        elif magic == MAGIC_PLAINTEXT:
-            print("RouterOS Plaintext Backup")
-            print("No decryption needed!")
-
-        else:
-            print("Invalid file!")
-            print("Cannot decrypt!")
-
-        input_file.close()
-        wordlist_file.close()
-
 def encrypt(input_file, output_file, password):
         print('** Encrypt Backup **')
         magic, length = get_header(input_file)
@@ -322,6 +291,41 @@ def pack(output_file, pack_directory):
 
         output_file.close()
 
+def bruteforce(input_file, wordlist_file):
+        print('** Bruteforce Backup Password **')
+        magic, length = get_header(input_file)
+
+        if magic == MAGIC_ENCRYPTED:
+            print("RouterOS Encrypted Backup")
+            print("Length:", length, "bytes")
+            salt = get_salt(input_file)
+            print("Salt (hex):", salt.hex())
+            magic_check = get_magic_check(input_file)
+
+            print("Brute forcing...")
+            found = False
+            for line in wordlist_file:
+                password = line.strip()
+                cipher = setup_cipher(salt, password)
+                found = check_password(cipher, magic_check)
+                if found:
+                    print("Password found:", password)
+                    break
+
+            if not found:
+                print("Password NOT found")
+
+        elif magic == MAGIC_PLAINTEXT:
+            print("RouterOS Plaintext Backup")
+            print("No decryption needed!")
+
+        else:
+            print("Invalid file!")
+            print("Cannot decrypt!")
+
+        input_file.close()
+        wordlist_file.close()
+
 def parse_cli():
     parser = ArgumentParser(description='** RouterOS Backup Tools by BigNerd95 **')
     subparser = parser.add_subparsers(dest='subparser_name')
@@ -339,10 +343,6 @@ def parse_cli():
     encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
     encryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
-    recoverParser = subparser.add_parser('recover', help='Recover backup password')
-    recoverParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
-    recoverParser.add_argument('-w', '--wordlist', required=True, metavar='WORDLIST')
-
     unpackParser = subparser.add_parser('unpack', help='Unpack backup')
     unpackParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     unpackParser.add_argument('-d', '--directory', required=True, metavar='UNPACK_DIRECTORY')
@@ -350,6 +350,10 @@ def parse_cli():
     packParser = subparser.add_parser('pack', help='Unpack backup')
     packParser.add_argument('-d', '--directory', required=True, metavar='PACK_DIRECTORY')
     packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+
+    bruteforceParser = subparser.add_parser('bruteforce', help='Bruteforce backup password')
+    bruteforceParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
+    bruteforceParser.add_argument('-w', '--wordlist', required=True, metavar='WORDLIST_FILE', type=FileType('rt'))
 
     if len(sys.argv) < 2:
         parser.print_help()
@@ -364,12 +368,12 @@ def main():
         decrypt(args.input, args.output, args.password)
     elif args.subparser_name == 'encrypt':
         encrypt(args.input, args.output, args.password)
-    elif args.subparser_name == 'recover':
-        recover(args.input, args.wordlist)
     elif args.subparser_name == 'unpack':
         unpack(args.input, args.directory)
     elif args.subparser_name == 'pack':
         pack(args.output, args.directory)
+    elif args.subparser_name == 'bruteforce':
+        bruteforce(args.input, args.wordlist)
 
 if __name__ == '__main__':
     main()
