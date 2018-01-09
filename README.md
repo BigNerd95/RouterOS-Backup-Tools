@@ -15,10 +15,6 @@ Convert an encrypted backup to a plaintext backup
 Convert a plaintext backup to an encrypted backup  
 `./ROSbackup.py encrypt -i MikroTik-plaintext.backup -o MikroTik-encrypted.backup -p password`  
 
-### Recover
-Search for the correct password for an encrypted backup in a wordlist file  
-`./ROSbackup.py recover -i MikroTik-encrypted.backup -w wordlist`
-
 ### Unpack  
 Extract all IDX and DAT files from a plaintext backup in a given directory    
 `./ROSbackup.py unpack -i MikroTik-plaintext.backup -d unpacked_backup`  
@@ -26,6 +22,10 @@ Extract all IDX and DAT files from a plaintext backup in a given directory
 ### Pack  
 Pack all IDX and DAT files from a given directory in a plaintext backup    
 `./ROSbackup.py pack -d unpacked_backup -o MikroTik-plaintext.backup` 
+
+### Bruteforce
+Bruteforce the password of an encrypted backup using a wordlist file  
+`./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`
 
 # Header structure
 ## Plaintext version
