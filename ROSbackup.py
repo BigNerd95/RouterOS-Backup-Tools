@@ -227,6 +227,37 @@ def decrypt(input_file, output_file, password):
         input_file.close()
         output_file.close()
 
+def recover(input_file, wordlist):
+        print('** Recover Backup Password **')
+        magic, length = get_header(input_file)
+
+        if magic == MAGIC_ENCRYPTED:
+            print("RouterOS Encrypted Backup")
+            print("Length:", length, "bytes")
+            salt = get_salt(input_file)
+            print("Salt (hex):", salt.hex())
+
+            wordlist_file = open(wordlist)
+            for line in wordlist_file:
+                password = line.strip()
+                cipher = setup_cipher(salt, password)
+
+                magic_check = get_magic_check(input_file)
+                if check_password(cipher, magic_check):
+                    print("Correct password: ", password)
+                    break
+
+        elif magic == MAGIC_PLAINTEXT:
+            print("RouterOS Plaintext Backup")
+            print("No decryption needed!")
+
+        else:
+            print("Invalid file!")
+            print("Cannot decrypt!")
+
+        input_file.close()
+        wordlist_file.close()
+
 def encrypt(input_file, output_file, password):
         print('** Encrypt Backup **')
         magic, length = get_header(input_file)
@@ -308,6 +339,10 @@ def parse_cli():
     encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
     encryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
+    recoverParser = subparser.add_parser('recover', help='Recover backup password')
+    recoverParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
+    recoverParser.add_argument('-w', '--wordlist', required=True, metavar='WORDLIST')
+
     unpackParser = subparser.add_parser('unpack', help='Unpack backup')
     unpackParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     unpackParser.add_argument('-d', '--directory', required=True, metavar='UNPACK_DIRECTORY')
@@ -329,6 +364,8 @@ def main():
         decrypt(args.input, args.output, args.password)
     elif args.subparser_name == 'encrypt':
         encrypt(args.input, args.output, args.password)
+    elif args.subparser_name == 'recover':
+        recover(args.input, args.wordlist)
     elif args.subparser_name == 'unpack':
         unpack(args.input, args.directory)
     elif args.subparser_name == 'pack':
