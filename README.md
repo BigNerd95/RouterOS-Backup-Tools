@@ -27,8 +27,8 @@ Bruteforce the password of an encrypted backup using a wordlist file
 `./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`
 
 ### Extract Users  
-To extract Users and Password from .dat file
-./extract_user.py unpacked_backup/user.dat
+To extract Users and Password from .dat file  
+`./extract_user.py unpacked_backup/user.dat`  
 
 # Header structure
 ## Plaintext version
