@@ -10,7 +10,6 @@ Tools to encrypt/decrypt and pack/unpack RouterOS v6.13+ backup files
 Convert an encrypted backup to a plaintext backup  
 `./ROSbackup.py decrypt -i MikroTik-encrypted.backup -o MikroTik-plaintext.backup -p password`  
 
-
 ### Encrypt  
 Convert a plaintext backup to an encrypted backup  
 `./ROSbackup.py encrypt -i MikroTik-plaintext.backup -o MikroTik-encrypted.backup -p password`  
@@ -26,6 +25,10 @@ Pack all IDX and DAT files from a given directory in a plaintext backup
 ### Bruteforce
 Bruteforce the password of an encrypted backup using a wordlist file  
 `./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`
+
+### Extract Users  
+To extract Users and Password from .dat file
+./extract_user.py unpacked_backup/user.dat
 
 # Header structure
 ## Plaintext version
