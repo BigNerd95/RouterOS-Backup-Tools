@@ -202,6 +202,8 @@ def info(input_file):
         print("Length:", length, "bytes")
         salt = get_salt(input_file)
         print("Salt (hex):", salt.hex())
+        magic_check = get_magic_check(input_file)
+        print("Magic Check (hex):", magic_check.hex())
 
     elif magic == MAGIC_PLAINTEXT:
         print("RouterOS Plaintext Backup")
@@ -221,10 +223,11 @@ def decrypt(input_file, output_file, password):
             print("Length:", length, "bytes")
             salt = get_salt(input_file)
             print("Salt (hex):", salt.hex())
+            magic_check = get_magic_check(input_file)
+            print("Magic Check (hex):", magic_check.hex())
 
             cipher = setup_cipher(salt, password)
 
-            magic_check = get_magic_check(input_file)
             if check_password(cipher, magic_check):
                 print("Correct password!")
                 print("Decrypting...")
@@ -319,6 +322,7 @@ def bruteforce(input_file, wordlist_file, parallel=False):
             salt = get_salt(input_file)
             print("Salt (hex):", salt.hex())
             magic_check = get_magic_check(input_file)
+            print("Magic Check (hex):", magic_check.hex())
 
             if parallel:
 
