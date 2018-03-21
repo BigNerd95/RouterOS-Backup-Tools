@@ -24,7 +24,13 @@ Pack all IDX and DAT files from a given directory in a plaintext backup
 
 ### Bruteforce
 Bruteforce the password of an encrypted backup using a wordlist file  
-`./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`
+`./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`  
+If you have very large wordlist files, you can use parallel brute forcing  
+`./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt -p`  
+On an Intel Xeon E3-1505M v6 @ 3.00GHz with 5 milion passwords:  
+- Sequential: 45 seconds  
+- Parallel: 12 seconds  
+(The correct password was the latest)  
 
 ### Extract Users  
 To extract Users and Password from .dat file  
