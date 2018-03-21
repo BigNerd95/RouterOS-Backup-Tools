@@ -171,6 +171,24 @@ def pack_files(path, file_names, output_file):
     output_file.seek(4, 0)
     output_file.write(length)
 
+# parallel bruteforcing function
+def brute(namespace, salt, magic_check, password):
+    global found # init in caller function "bruteforce"
+
+    if not found:
+        cipher = setup_cipher(salt, password.strip())
+        if check_password(cipher, magic_check):
+            found = True
+            namespace.found = found
+            namespace.password = password
+
+        # communication drastically drop down the performance, so we make it only once each 1000 iterations
+        global counter # init in caller function "bruteforce"
+        counter += 1
+        if counter == 1000: # <-- increase 1000 if all CPU are not at 100%
+            counter = 0
+            found = namespace.found
+
 ##################
 # main functions #
 ##################
@@ -291,7 +309,7 @@ def pack(output_file, pack_directory):
 
         output_file.close()
 
-def bruteforce(input_file, wordlist_file):
+def bruteforce(input_file, wordlist_file, parallel=False):
         print('** Bruteforce Backup Password **')
         magic, length = get_header(input_file)
 
@@ -302,17 +320,41 @@ def bruteforce(input_file, wordlist_file):
             print("Salt (hex):", salt.hex())
             magic_check = get_magic_check(input_file)
 
-            print("Brute forcing...")
-            found = False
-            for line in wordlist_file:
-                password = line.strip()
-                cipher = setup_cipher(salt, password)
-                found = check_password(cipher, magic_check)
-                if found:
-                    print("Password found:", password)
-                    break
+            if parallel:
 
-            if not found:
+                print("Parallel brute forcing...")
+
+                from multiprocessing import Pool, Manager
+                from functools import partial
+
+                global counter
+                global found
+                counter = 0
+                found = False
+
+                namespace = Manager().Namespace()
+                namespace.found = found
+                namespace.password = None
+
+                Pool().map(partial(brute, namespace, salt, magic_check), wordlist_file)
+
+                found = namespace.found
+                password = namespace.password
+
+            else:
+
+                print("Brute forcing...")
+
+                found = False
+                for password in wordlist_file:
+                    cipher = setup_cipher(salt, password.strip())
+                    if check_password(cipher, magic_check):
+                        found = True
+                        break
+
+            if found:
+                print("Password found:", password)
+            else:
                 print("Password NOT found")
 
         elif magic == MAGIC_PLAINTEXT:
@@ -354,6 +396,7 @@ def parse_cli():
     bruteforceParser = subparser.add_parser('bruteforce', help='Bruteforce backup password')
     bruteforceParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     bruteforceParser.add_argument('-w', '--wordlist', required=True, metavar='WORDLIST_FILE', type=FileType('rt'))
+    bruteforceParser.add_argument('-p', '--parallel', action='store_true', help='Use all CPU cores')
 
     if len(sys.argv) < 2:
         parser.print_help()
@@ -373,7 +416,7 @@ def main():
     elif args.subparser_name == 'pack':
         pack(args.output, args.directory)
     elif args.subparser_name == 'bruteforce':
-        bruteforce(args.input, args.wordlist)
+        bruteforce(args.input, args.wordlist, args.parallel)
 
 if __name__ == '__main__':
     main()
