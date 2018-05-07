@@ -7,7 +7,7 @@ def decrypt_password(user, pass_enc):
 
     passw = ""
     for i in range(0, len(pass_enc)):
-        passw += chr(pass_enc[i] ^ key[i % len(key)])
+        passw += chr(ord(pass_enc[i]) ^ ord(key[i % len(key)]))
     
     return passw.split("\x00")[0]
 
@@ -15,8 +15,8 @@ def extract_user_pass_from_entry(entry):
     user_data = entry.split(b"\x01\x00\x00\x21")[1]
     pass_data = entry.split(b"\x11\x00\x00\x21")[1]
 
-    user_len = user_data[0]
-    pass_len = pass_data[0]
+    user_len = ord(user_data[0])
+    pass_len = ord(pass_data[0])
 
     username = user_data[1:1 + user_len]
     password = pass_data[1:1 + pass_len]
