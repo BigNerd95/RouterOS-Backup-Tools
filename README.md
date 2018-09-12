@@ -43,12 +43,23 @@ To extract Users and Password from .dat file
 | 4 | Unsigned LE Int | Magic | 0xB1A1AC88 |
 | 4 | Unsigned LE Int | File size | length in bytes |
 
-## Encrypted version
+## Encrypted version (RC4)
 | Size (byte)  | Type | Name | Description |
 | :----------: | ---- | ---- | ------- |
 | 4 | Unsigned LE Int | Magic | 0x7291A8EF |
 | 4 | Unsigned LE Int | File size | length in bytes |
-| 32 | Byte array | Salt | random salt added to password |
+| 32 | Byte array | Salt | Random salt added to password |
+| 4 | Unsigned LE Int | Magic check | Encrypted Magic 0xB1A1AC88 to verify if password is correct |
+
+## Encrypted version (AES128-CTR)  
+RouterOS v6.43+ only  
+
+| Size (byte)  | Type | Name | Description |
+| :----------: | ---- | ---- | ------- |
+| 4 | Unsigned LE Int | Magic | 0x7391A8EF |
+| 4 | Unsigned LE Int | File size | length in bytes |
+| 32 | Byte array | Salt | Random salt added to password |
+| 32 | Byte array | Signature | SHA256 HMAC  |
 | 4 | Unsigned LE Int | Magic check | Encrypted Magic 0xB1A1AC88 to verify if password is correct |
 
 # Body structure
@@ -75,7 +86,7 @@ For each entry:
 | 4 | Signed Int | Unused | It's always 5 (but in net/devices.idx it's 6 and in port_lock.idx it's -1) for each entry |
 
 # Encryption setup
-1) A random salt of 32 byte is generated (RouterOS only populates the first 16 bytes, mistake?)
+1) A random salt of 32 byte is generated (~~RouterOS only populates the first 16 bytes, mistake?~~) (Fixed)
 2) The password is appended to the salt
 3) salt+password result is hashed with SHA1 algorithm
 4) RC4 cipher is initialized with the SHA1 hash
