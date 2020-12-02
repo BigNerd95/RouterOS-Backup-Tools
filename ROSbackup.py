@@ -5,11 +5,13 @@
 import sys, os, struct
 from random import randrange
 from argparse import ArgumentParser, FileType
-from Crypto.Cipher import ARC4
-from Crypto.Hash import SHA
+from Crypto.Cipher import ARC4, AES
+from Crypto.Hash import SHA, SHA256, HMAC
+from Crypto.Util import Counter
 
 # RouterOS constants
-MAGIC_ENCRYPTED = 0x7291A8EF
+MAGIC_ENCRYPTED_RC4 = 0x7291A8EF
+MAGIC_ENCRYPTED_AES = 0X7391A8EF   
 MAGIC_PLAINTEXT = 0xB1A1AC88
 RC4_SKIP = 0x300
 
@@ -29,6 +31,12 @@ def get_salt(input_file):
     salt = struct.unpack('<32s', data)
     return salt[0]
 
+def get_signature(input_file):
+    input_file.seek(40, 0)
+    data = input_file.read(32)
+    sign = struct.unpack('<32s', data)
+    return sign[0]
+
 def get_magic_check(input_file):
     input_file.seek(40, 0)
     data = input_file.read(4)
@@ -43,7 +51,7 @@ def check_password(cipher, magic_check):
 def make_salt(size):
     return bytes([randrange(256) for _ in range(size)])
 
-def setup_cipher(salt, password):
+def setup_cipher_rc4(salt, password):
     key = SHA.new(salt + bytes(password, 'ascii')).digest()
     cipher = ARC4.new(key)
     cipher.encrypt(bytes(RC4_SKIP)) # skip stream start
@@ -92,7 +100,7 @@ def write_data(output_file, data):
 # core functions #
 ##################
 
-def decrypt_backup(input_file, output_file, cipher):
+def decrypt_backup_rc4(input_file, output_file, cipher):
     input_file.seek(44, 0) # skip magic, length, salt, magic_check
     output_file.seek(0, 0)
     magic = struct.pack('<I', MAGIC_PLAINTEXT)
@@ -108,10 +116,10 @@ def decrypt_backup(input_file, output_file, cipher):
     output_file.seek(4, 0)
     output_file.write(length)
 
-def encrypt_backup(input_file, output_file, cipher, salt):
+def encrypt_backup_rc4(input_file, output_file, cipher, salt):
     input_file.seek(8, 0) # skip magic, length
     output_file.seek(0, 0)
-    magic = struct.pack('<I', MAGIC_ENCRYPTED)
+    magic = struct.pack('<I', MAGIC_ENCRYPTED_RC4)
     output_file.write(magic + bytes(4) + salt) # magic, length offset, salt
 
     magic_check = struct.pack('<I', MAGIC_PLAINTEXT)
@@ -176,7 +184,7 @@ def brute(namespace, salt, magic_check, password):
     global found # init in caller function "bruteforce"
 
     if not found:
-        cipher = setup_cipher(salt, password.strip())
+        cipher = setup_cipher_rc4(salt, password.strip())
         if check_password(cipher, magic_check):
             found = True
             namespace.found = found
@@ -197,11 +205,21 @@ def info(input_file):
     print('** Backup Info **')
     magic, length = get_header(input_file)
 
-    if magic == MAGIC_ENCRYPTED:
-        print("RouterOS Encrypted Backup")
+    if magic == MAGIC_ENCRYPTED_RC4:
+        print("RouterOS Encrypted Backup (rc4-sha1)")
         print("Length:", length, "bytes")
         salt = get_salt(input_file)
         print("Salt (hex):", salt.hex())
+        magic_check = get_magic_check(input_file)
+        print("Magic Check (hex):", magic_check.hex())
+
+    elif magic == MAGIC_ENCRYPTED_AES:
+        print("RouterOS Encrypted Backup (aes-sha256)")
+        print("Length:", length, "bytes")
+        salt = get_salt(input_file)
+        print("Salt (hex):", salt.hex())
+        signature = get_signature(input_file)
+        print("Signature: ", signature.hex())
         magic_check = get_magic_check(input_file)
         print("Magic Check (hex):", magic_check.hex())
 
@@ -218,24 +236,35 @@ def decrypt(input_file, output_file, password):
         print('** Decrypt Backup **')
         magic, length = get_header(input_file)
 
-        if magic == MAGIC_ENCRYPTED:
-            print("RouterOS Encrypted Backup")
+        if magic == MAGIC_ENCRYPTED_RC4:
+            print("RouterOS Encrypted Backup (rc4-sha1)")
             print("Length:", length, "bytes")
             salt = get_salt(input_file)
             print("Salt (hex):", salt.hex())
             magic_check = get_magic_check(input_file)
             print("Magic Check (hex):", magic_check.hex())
 
-            cipher = setup_cipher(salt, password)
+            cipher = setup_cipher_rc4(salt, password)
 
             if check_password(cipher, magic_check):
                 print("Correct password!")
                 print("Decrypting...")
-                decrypt_backup(input_file, output_file, cipher)
+                decrypt_backup_rc4(input_file, output_file, cipher)
                 print("Decrypted correctly")
             else:
                 print("Wrong password!")
                 print("Cannot decrypt!")
+
+        elif magic == MAGIC_ENCRYPTED_AES:
+            print("RouterOS Encrypted Backup (aes-sha256)")
+            print("Length:", length, "bytes")
+            salt = get_salt(input_file)
+            print("Salt (hex):", salt.hex())
+            signature = get_signature(input_file)
+            print("Signature: ", signature.hex())
+            magic_check = get_magic_check(input_file)
+            print("Magic Check (hex):", magic_check.hex())
+            print("Aes-sha256 decryption NOT yet supported")
 
         elif magic == MAGIC_PLAINTEXT:
             print("RouterOS Plaintext Backup")
@@ -248,25 +277,29 @@ def decrypt(input_file, output_file, password):
         input_file.close()
         output_file.close()
 
-def encrypt(input_file, output_file, password):
+def encrypt(input_file, output_file, encryption, password):
         print('** Encrypt Backup **')
         magic, length = get_header(input_file)
 
-        if magic == MAGIC_ENCRYPTED:
+        if magic in (MAGIC_ENCRYPTED_RC4, MAGIC_ENCRYPTED_AES):
             print("RouterOS Encrypted Backup")
             print("No encryption needed!")
 
         elif magic == MAGIC_PLAINTEXT:
             print("RouterOS Plaintext Backup")
             print("Length:", length, "bytes")
-            salt = make_salt(32)
-            print("Generated Salt (hex):", salt.hex())
 
-            cipher = setup_cipher(salt, password)
+            if encryption == "RC4":
+                salt = make_salt(32)
+                print("Generated Salt (hex):", salt.hex())
 
-            print("Encrypting...")
-            encrypt_backup(input_file, output_file, cipher, salt)
-            print("Encrypted correctly")
+                cipher = setup_cipher_rc4(salt, password)
+
+                print("Encrypting with rc4-sha1...")
+                encrypt_backup_rc4(input_file, output_file, cipher, salt)
+                print("Encrypted correctly")
+            else:
+                print("Aes-sha256 encryption NOT yet supported")
 
         else:
             print("Invalid file!")
@@ -279,7 +312,7 @@ def unpack(input_file, unpack_directory):
         print('** Unpack Backup **')
         magic, length = get_header(input_file)
 
-        if magic == MAGIC_ENCRYPTED:
+        if magic in (MAGIC_ENCRYPTED_RC4, MAGIC_ENCRYPTED_AES):
             print("RouterOS Encrypted Backup")
             print("Cannot unpack encrypted backup!")
             print("Decrypt backup first!")
@@ -316,8 +349,8 @@ def bruteforce(input_file, wordlist_file, parallel=False):
         print('** Bruteforce Backup Password **')
         magic, length = get_header(input_file)
 
-        if magic == MAGIC_ENCRYPTED:
-            print("RouterOS Encrypted Backup")
+        if magic == MAGIC_ENCRYPTED_RC4:
+            print("RouterOS Encrypted Backup (rc4-sha1)")
             print("Length:", length, "bytes")
             salt = get_salt(input_file)
             print("Salt (hex):", salt.hex())
@@ -351,7 +384,7 @@ def bruteforce(input_file, wordlist_file, parallel=False):
 
                 found = False
                 for password in wordlist_file:
-                    cipher = setup_cipher(salt, password.strip())
+                    cipher = setup_cipher_rc4(salt, password.strip())
                     if check_password(cipher, magic_check):
                         found = True
                         break
@@ -360,6 +393,17 @@ def bruteforce(input_file, wordlist_file, parallel=False):
                 print("Password found:", password)
             else:
                 print("Password NOT found")
+
+        if magic == MAGIC_ENCRYPTED_AES:
+            print("RouterOS Encrypted Backup (aes-sha256)")
+            print("Length:", length, "bytes")
+            salt = get_salt(input_file)
+            print("Salt (hex):", salt.hex())
+            signature = get_signature(input_file)
+            print("Signature: ", signature.hex())
+            magic_check = get_magic_check(input_file)
+            print("Magic Check (hex):", magic_check.hex())
+            print("Bruteforce aes-sha256 NOT yet supported")
 
         elif magic == MAGIC_PLAINTEXT:
             print("RouterOS Plaintext Backup")
@@ -387,6 +431,7 @@ def parse_cli():
     encryptParser = subparser.add_parser('encrypt', help='Encrypt backup')
     encryptParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+    encryptParser.add_argument('-e', '--encryption', required=True, metavar='ENCRYPTION', action='store', choices=['RC4','AES'])
     encryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
     unpackParser = subparser.add_parser('unpack', help='Unpack backup')
@@ -414,7 +459,7 @@ def main():
     elif args.subparser_name == 'decrypt':
         decrypt(args.input, args.output, args.password)
     elif args.subparser_name == 'encrypt':
-        encrypt(args.input, args.output, args.password)
+        encrypt(args.input, args.output, args.encryption, args.password)
     elif args.subparser_name == 'unpack':
         unpack(args.input, args.directory)
     elif args.subparser_name == 'pack':
