@@ -3,9 +3,9 @@ Tools to encrypt/decrypt and pack/unpack RouterOS v6.13+ backup files
 
 ### Warning
 #### Backup format
-AES128-CTR (ROS v6.43+) is NOT yet supported.  
+AES128-CTR (ROS v6.43+) NOT yet supported.  
 #### User password format
-ORS v6.45.1+ removed insecure password storage, so they cannot be extracted with `extract_user.py` any more.
+ROS v6.45.1+ removed insecure password storage, so they cannot be extracted with `extract_user.py` any more.
 
 # Usage examples  
 
