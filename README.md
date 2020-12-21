@@ -2,8 +2,6 @@
 Tools to encrypt/decrypt and pack/unpack RouterOS v6.13+ backup files
 
 ### Warning
-#### Backup format
-AES128-CTR (ROS v6.43+) NOT yet supported.  
 #### User password format
 ROS v6.45.1+ removed insecure password storage, so they cannot be extracted with `extract_user.py` any more.
 
@@ -18,7 +16,7 @@ Convert an encrypted backup to a plaintext backup
 
 ### Encrypt  
 Convert a plaintext backup to an encrypted backup  
-`./ROSbackup.py encrypt -i MikroTik-plaintext.backup -o MikroTik-encrypted.backup -e RC4 -p password`  
+`./ROSbackup.py encrypt -i MikroTik-plaintext.backup -o MikroTik-encrypted.backup -e AES -p password`
 
 ### Unpack  
 Extract all IDX and DAT files from a plaintext backup in a given directory    
@@ -57,7 +55,15 @@ To extract Users and Password from .dat file
 | 32 | Byte array | Salt | Random salt added to password |
 | 4 | Unsigned LE Int | Magic check | Encrypted Magic 0xB1A1AC88 to verify if password is correct |
 
-## Encrypted version (AES128-CTR)  
+### Encryption setup
+1) A random salt of 32 bytes is generated (~~RouterOS only populates the first 16 bytes, mistake?~~) (Fixed)
+2) The password is appended to the salt
+3) salt+password result is hashed using SHA1
+4) RC4 cipher is keyed with the SHA1 hash
+5) RC4 cipher is used to encrypt or decrypt 0x300 (256 * 3 = 768) bytes (of arbitrary value)
+6) The first 4 bytes are decrypted and compared to 0xB1A1AC88 to check if password is correct before performing a decryption
+
+## Encrypted version (AES128-CTR)
 RouterOS v6.43+ only  
 
 | Size (byte)  | Type | Name | Description |
@@ -67,6 +73,17 @@ RouterOS v6.43+ only
 | 32 | Byte array | Salt | Random salt added to password |
 | 32 | Byte array | Signature | SHA256 HMAC  |
 | 4 | Unsigned LE Int | Magic check | Encrypted Magic 0xB1A1AC88 to verify if password is correct |
+
+### Encryption setup
+1) A random salt of 32 bytes is generated
+2) The password is appended to the salt
+3) salt+password result is hashed using SHA256
+4) AES128-CTR cipher is keyed with the first half of the SHA256 hash
+5) CTR mode's nonce is initialized with the first half of the salt
+6) HMAC-SHA256 is keyed with the second half of the SHA256 hash
+7) AES cipher is used to encrypt or decrypt 16 bytes (of arbitrary value)
+8) The first 4 bytes are decrypted and compared to 0xB1A1AC88 to check if password is correct before performing a decryption
+9) The HMAC result is verified against what's stored in the file when performing a decryption
 
 # Body structure
 In the body are saved all file pair with extension .idx and .dat inside /flash/rw/store/  
@@ -90,14 +107,6 @@ For each entry:
 | 4 | Signed Int | Entry Index | The position of this entry in the Webfig/Winbox list, if -1 it means the entry was deleted and it won't be shown on Webfig/Winbox. |
 | 4 | Signed Int | Entry Size | The size of this entry in bytes |
 | 4 | Signed Int | Unused | It's always 5 (but in net/devices.idx it's 6 and in port_lock.idx it's -1) for each entry |
-
-# Encryption setup
-1) A random salt of 32 byte is generated (~~RouterOS only populates the first 16 bytes, mistake?~~) (Fixed)
-2) The password is appended to the salt
-3) salt+password result is hashed with SHA1 algorithm
-4) RC4 cipher is initialized with the SHA1 hash
-5) RC4 cipher skip first 0x300 (256 * 3 = 768) iterations
-6) 0xB1A1AC88 is encrypted to check if password is correct before performing a decryption
 
 # Comments
 - When you delete some config (in Webfig or Winbox), they are not really deleted, they are only disabled and hidden, so if you unpack your backup, you can still recover them
