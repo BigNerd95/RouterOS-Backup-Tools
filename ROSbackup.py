@@ -3,7 +3,6 @@
 # RouterOS Backup Tools by BigNerd95
 
 import sys, os, struct
-from random import randrange
 from argparse import ArgumentParser, FileType
 from Crypto.Cipher import ARC4, AES
 from Crypto.Hash import SHA, SHA256, HMAC
@@ -49,7 +48,7 @@ def check_password(cipher, magic_check):
     return decrypted_magic_check[0] == MAGIC_PLAINTEXT
 
 def make_salt(size):
-    return bytes([randrange(256) for _ in range(size)])
+    return os.urandom(size)
 
 def setup_cipher_rc4(salt, password):
     key = SHA.new(salt + bytes(password, 'ascii')).digest()
