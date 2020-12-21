@@ -4,9 +4,10 @@
 
 import sys, os, struct
 from argparse import ArgumentParser, FileType
-from Crypto.Cipher import ARC4, AES
-from Crypto.Hash import SHA, SHA256, HMAC
-from Crypto.Util import Counter
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA256
+from cryptography.hazmat.primitives.hmac import HMAC
 
 # RouterOS constants
 MAGIC_ENCRYPTED_RC4 = 0x7291A8EF
@@ -43,18 +44,20 @@ def get_magic_check(input_file):
     return magic_check[0]
 
 def check_password(cipher, magic_check):
-    data = cipher.decrypt(magic_check)
+    data = cipher.update(magic_check)
     decrypted_magic_check = struct.unpack('<I', data)
     return decrypted_magic_check[0] == MAGIC_PLAINTEXT
 
 def make_salt(size):
     return os.urandom(size)
 
-def setup_cipher_rc4(salt, password):
-    key = SHA.new(salt + bytes(password, 'ascii')).digest()
-    cipher = ARC4.new(key)
-    cipher.encrypt(bytes(RC4_SKIP)) # skip stream start
-    return cipher
+def setup_cipher_rc4(salt, password, encrypt = False):
+    hash = Hash(SHA1(), default_backend())
+    hash.update(salt + bytes(password, 'ascii'))
+    cipher = Cipher(algorithms.ARC4(hash.finalize()), None, default_backend())
+    cryptor = cipher.encryptor() if encrypt else cipher.decryptor()
+    cryptor.update(bytes(RC4_SKIP))
+    return cryptor
 
 def extract_data(input_file):
     raw_len = input_file.read(4)
@@ -109,7 +112,7 @@ def decrypt_backup_rc4(input_file, output_file, cipher):
         chunk = input_file.read(1024)
         if not chunk:
             break
-        output_file.write(cipher.decrypt(chunk))
+        output_file.write(cipher.update(chunk))
 
     length = struct.pack('<I', output_file.tell()) # length
     output_file.seek(4, 0)
@@ -122,13 +125,13 @@ def encrypt_backup_rc4(input_file, output_file, cipher, salt):
     output_file.write(magic + bytes(4) + salt) # magic, length offset, salt
 
     magic_check = struct.pack('<I', MAGIC_PLAINTEXT)
-    output_file.write(cipher.encrypt(magic_check))
+    output_file.write(cipher.update(magic_check))
 
     while True:
         chunk = input_file.read(1024)
         if not chunk:
             break
-        output_file.write(cipher.encrypt(chunk))
+        output_file.write(cipher.update(chunk))
 
     length = struct.pack('<I', output_file.tell()) # length
     output_file.seek(4, 0)
@@ -292,7 +295,7 @@ def encrypt(input_file, output_file, encryption, password):
                 salt = make_salt(32)
                 print("Generated Salt (hex):", salt.hex())
 
-                cipher = setup_cipher_rc4(salt, password)
+                cipher = setup_cipher_rc4(salt, password, encrypt=True)
 
                 print("Encrypting with rc4-sha1...")
                 encrypt_backup_rc4(input_file, output_file, cipher, salt)

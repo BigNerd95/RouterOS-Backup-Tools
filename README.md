@@ -104,4 +104,4 @@ For each entry:
 
 # Dependences
 - argparse
-- pycrypto
+- [pyca/cryptography](https://cryptography.io/en/latest/installation.html#installation)
