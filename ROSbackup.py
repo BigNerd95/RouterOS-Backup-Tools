@@ -427,12 +427,12 @@ def parse_cli():
 
     decryptParser = subparser.add_parser('decrypt', help='Decrypt backup')
     decryptParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
-    decryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+    decryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
     decryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
     encryptParser = subparser.add_parser('encrypt', help='Encrypt backup')
     encryptParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
-    encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+    encryptParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
     encryptParser.add_argument('-e', '--encryption', required=True, metavar='ENCRYPTION', action='store', choices=['RC4','AES'])
     encryptParser.add_argument('-p', '--password', required=True, metavar='PASSWORD')
 
@@ -442,7 +442,7 @@ def parse_cli():
 
     packParser = subparser.add_parser('pack', help='Unpack backup')
     packParser.add_argument('-d', '--directory', required=True, metavar='PACK_DIRECTORY')
-    packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('wb'))
+    packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
 
     bruteforceParser = subparser.add_parser('bruteforce', help='Bruteforce backup password')
     bruteforceParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
