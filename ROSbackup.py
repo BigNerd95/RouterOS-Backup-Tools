@@ -182,8 +182,10 @@ def pack_files(path, file_names, output_file):
     output_file.write(length)
 
 # parallel bruteforcing function
+found = False
+counter = 0
 def brute(namespace, salt, magic_check, password):
-    global found # init in caller function "bruteforce"
+    global found
 
     if not found:
         cipher = setup_cipher_rc4(salt, password.strip())
@@ -193,7 +195,7 @@ def brute(namespace, salt, magic_check, password):
             namespace.password = password
 
         # communication drastically drop down the performance, so we make it only once each 1000 iterations
-        global counter # init in caller function "bruteforce"
+        global counter
         counter += 1
         if counter == 1000: # <-- increase 1000 if all CPU are not at 100%
             counter = 0
@@ -366,9 +368,7 @@ def bruteforce(input_file, wordlist_file, parallel=False):
                 from multiprocessing import Pool, Manager
                 from functools import partial
 
-                global counter
                 global found
-                counter = 0
                 found = False
 
                 namespace = Manager().Namespace()
