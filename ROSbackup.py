@@ -396,7 +396,7 @@ def bruteforce(input_file, wordlist_file, parallel=False):
             else:
                 print("Password NOT found")
 
-        if magic == MAGIC_ENCRYPTED_AES:
+        elif magic == MAGIC_ENCRYPTED_AES:
             print("RouterOS Encrypted Backup (aes-sha256)")
             print("Length:", length, "bytes")
             salt = get_salt(input_file)
