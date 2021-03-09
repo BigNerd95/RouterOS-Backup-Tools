@@ -537,7 +537,7 @@ def parse_cli():
     unpackParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     unpackParser.add_argument('-d', '--directory', required=True, metavar='UNPACK_DIRECTORY')
 
-    packParser = subparser.add_parser('pack', help='Unpack backup')
+    packParser = subparser.add_parser('pack', help='Pack backup')
     packParser.add_argument('-d', '--directory', required=True, metavar='PACK_DIRECTORY')
     packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
 
