@@ -50,6 +50,9 @@ def check_password(cipher, magic_check):
 def make_salt(size):
     return os.urandom(size)
 
+def is_ascii(s):
+    return all(ord(c) < 128 for c in s)
+
 def setup_cipher_rc4(salt, password, encrypt = False):
     hash = Hash(SHA1(), default_backend())
     hash.update(salt + bytes(password, 'ascii'))
@@ -496,6 +499,9 @@ def bruteforce(input_file, wordlist_file, parallel=False):
 
             found = False
             for password in wordlist_file:
+                if not is_ascii(password.strip()):
+                    print("Not ASCII password '"+password.strip()+"' in wordlist, skipping")
+                    continue
                 if magic == MAGIC_ENCRYPTED_RC4:
                     cipher = setup_cipher_rc4(salt, password.strip())
                 elif magic == MAGIC_ENCRYPTED_AES:
