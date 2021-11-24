@@ -36,6 +36,8 @@ On an Intel Xeon E3-1505M v6 @ 3.00GHz with 5 milion passwords:
 - Parallel: 12 seconds  
 (The correct password was the latest)  
 
+You can try the rust version, it should be faster: [routerosbackuptools](https://github.com/marcograss/routerosbackuptools)
+
 ### Extract Users  
 To extract Users and Password from .dat file  
 `./extract_user.py unpacked_backup/user.dat`  
