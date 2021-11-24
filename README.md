@@ -114,3 +114,6 @@ For each entry:
 # Dependences
 - argparse
 - [pyca/cryptography](https://cryptography.io/en/latest/installation.html#installation)
+
+# Rust version  
+A friend of mine rewrote this tool in rust: https://github.com/marcograss/routerosbackuptools
