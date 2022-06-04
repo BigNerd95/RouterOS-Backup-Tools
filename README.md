@@ -26,6 +26,15 @@ Extract all IDX and DAT files from a plaintext backup in a given directory
 Pack all IDX and DAT files from a given directory in a plaintext backup    
 `./ROSbackup.py pack -d unpacked_backup -o MikroTik-plaintext.backup` 
 
+### Rest Password  
+Rest password to default:
+1) rename the original backup to `MikrotikOriginBackUp.backup`
+2) reset MikroTik router (be sure to have a backup of the current configuration )
+3) make backup for the router with name `default.backup`
+4) copy `MikrotikOriginBackUp.backup` and `default.backup` to working directory
+5) Execute `./ROSbackup.py resetpassword -i MikrotikOriginBackUp.backup -d default.backup -o MikrotikNewBackup.backup`
+6) restore MikroTik router with `MikrotikNewBackup.backup`
+Now you can login with the default password!
 ### Bruteforce
 Bruteforce the password of an encrypted backup using a wordlist file  
 `./ROSbackup.py bruteforce -i MikroTik-encrypted.backup -w wordlist.txt`  

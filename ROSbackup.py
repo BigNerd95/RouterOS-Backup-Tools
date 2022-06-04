@@ -2,6 +2,7 @@
 
 # RouterOS Backup Tools by BigNerd95
 
+import shutil
 import sys, os, struct
 from argparse import ArgumentParser, FileType
 from cryptography.hazmat.backends import default_backend
@@ -437,6 +438,23 @@ def pack(output_file, pack_directory):
 
         output_file.close()
 
+def reset_password(input_file, default_file, output_file):
+    print('** Rest Password **')
+    temp_dir = './tempDir'
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+    os.makedirs(temp_dir)
+    unpack(input_file, temp_dir+'/original')
+    unpack(default_file, temp_dir+'/default')
+    overwrite_list = ['user.dat','user.idx','um4.dat','um4.idx']
+    for file in overwrite_list:
+        try:
+            os.remove(temp_dir+'/original/'+file)
+        except FileNotFoundError:
+            pass
+        shutil.copy(temp_dir+'/default/'+file, temp_dir+'/original/'+file)
+    pack(output_file, temp_dir+'/original')
+
 def bruteforce(input_file, wordlist_file, parallel=False):
         print('** Bruteforce Backup Password **')
         magic, length = get_header(input_file)
@@ -541,6 +559,11 @@ def parse_cli():
     packParser.add_argument('-d', '--directory', required=True, metavar='PACK_DIRECTORY')
     packParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
 
+    resetParser = subparser.add_parser('resetpassword', help='reset password')
+    resetParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE',type=FileType('rb'))
+    resetParser.add_argument('-d', '--default', required=True, metavar='INPUT_FILE', type=FileType('rb'))
+    resetParser.add_argument('-o', '--output', required=True, metavar='OUTPUT_FILE', type=FileType('xb'))
+
     bruteforceParser = subparser.add_parser('bruteforce', help='Bruteforce backup password')
     bruteforceParser.add_argument('-i', '--input', required=True, metavar='INPUT_FILE', type=FileType('rb'))
     bruteforceParser.add_argument('-w', '--wordlist', required=True, metavar='WORDLIST_FILE', type=FileType('rt'))
@@ -563,6 +586,8 @@ def main():
         unpack(args.input, args.directory)
     elif args.subparser_name == 'pack':
         pack(args.output, args.directory)
+    elif args.subparser_name == 'resetpassword':
+        reset_password(args.input, args.default, args.output)
     elif args.subparser_name == 'bruteforce':
         bruteforce(args.input, args.wordlist, args.parallel)
 
